@@ -1,70 +1,31 @@
 // front-end JS — front-only (aucune connexion au backend dans ce fichier)
 
-// Si le script est exécuté en dehors d'un navigateur (ex: `node home.js`),
-// démarrer un petit serveur statique et ouvrir la page dans le navigateur.
-if (typeof window === 'undefined' || typeof document === 'undefined') {
-	/* eslint-disable no-console */
-	// Démarre un serveur HTTP simple pour servir les fichiers du dossier courant.
-	const http = require('http');
-	const fs = require('fs');
-	const path = require('path');
-	const { exec } = require('child_process');
+/*
+ * Le code suivant est strictement pour le navigateur. Le serveur de
+ * développement a été extrait dans `dev-server.js` pour garder
+ * `home.js` propre et dédié au front.
+ */
 
-	const port = process.env.PORT || 8000;
-	const root = process.cwd();
+(function () {
+	'use strict';
 
-	const mime = {
-		'.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
-		'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
-		'.json': 'application/json', '.txt': 'text/plain'
-	};
+	const $ = id => document.getElementById(id);
 
-	const server = http.createServer((req, res) => {
-		try {
-			let urlPath = decodeURIComponent(req.url.split('?')[0]);
-			if (urlPath === '/') urlPath = '/index.html';
-			const filePath = path.join(root, urlPath);
-			fs.stat(filePath, (err, stats) => {
-				if (err || !stats.isFile()) {
-					res.statusCode = 404;
-					res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-					res.end('404 - Not Found');
-					return;
-				}
-				const ext = path.extname(filePath).toLowerCase();
-				res.statusCode = 200;
-				res.setHeader('Content-Type', mime[ext] || 'application/octet-stream');
-				const stream = fs.createReadStream(filePath);
-				stream.pipe(res);
-			});
-		} catch (e) {
-			res.statusCode = 500;
-			res.end('Server error');
-		}
-	});
+	const fileInput = $('file-input');
+	const dropArea = $('drop-area');
+	const preview = $('preview');
+	const previewWrapper = $('preview-wrapper');
+	const simulateBtn = $('simulate-btn');
+	const resultEl = $('result');
+	const spinner = $('spinner');
 
-	server.listen(port, () => {
-		const url = `http://localhost:${port}/index.html`;
-		console.log(`Serving ${root} at ${url}`);
-		// Ouvre le navigateur par défaut (Windows/macOS/Linux)
-		const plat = process.platform;
-		let cmd;
-		if (plat === 'win32') cmd = `start "" "${url}"`;
-		else if (plat === 'darwin') cmd = `open "${url}"`;
-		else cmd = `xdg-open "${url}"`;
-		exec(cmd, (err) => {
-			if (err) console.log('Impossible d\'ouvrir automatiquement le navigateur:', err.message);
-		});
-	});
-} else {
-	const fileInput = document.getElementById('file-input');
-	const dropArea = document.getElementById('drop-area');
-	const preview = document.getElementById('preview');
-	const previewWrapper = document.getElementById('preview-wrapper');
-	const uploadBtn = document.getElementById('upload-btn');
-	const simulateBtn = document.getElementById('simulate-btn');
-	const resultEl = document.getElementById('result');
-	const spinner = document.getElementById('spinner');
+	if (!fileInput || !dropArea || !preview || !previewWrapper || !simulateBtn || !resultEl || !spinner) {
+		// Si des éléments manquent, on logge et on arrête l'initialisation.
+		// Ceci évite des erreurs si le script est inclus ailleurs.
+		/* eslint-disable no-console */
+		console.error('home.js: éléments DOM manquants — initialisation annulée.');
+		return;
+	}
 
 	let currentFile = null;
 
@@ -86,12 +47,22 @@ if (typeof window === 'undefined' || typeof document === 'undefined') {
 		resultEl.innerHTML = '';
 	}
 
+	// Events
+	// Quand l'utilisateur sélectionne un fichier via l'input file,
+	// on récupère le premier fichier sélectionné et on appelle
+	// `previewFile` pour afficher un aperçu localement.
 	fileInput.addEventListener('change', (e) => {
 		const f = e.target.files && e.target.files[0];
 		if (!f) return;
 		previewFile(f);
 	});
 
+	// Drag & drop handlers:
+	// - `dragover`: empêcher le comportement par défaut pour autoriser le drop
+	//   et ajouter une classe visuelle.
+	// - `dragleave`: retirer la classe visuelle quand l'élément quitte la zone.
+	// - `drop`: empêcher le comportement par défaut, retirer la classe visuelle
+	//   et prévisualiser le premier fichier déposé (si présent).
 	dropArea.addEventListener('dragover', (e) => {
 		e.preventDefault();
 		dropArea.classList.add('dragover');
@@ -104,8 +75,11 @@ if (typeof window === 'undefined' || typeof document === 'undefined') {
 		if (f) previewFile(f);
 	});
 
+	// Lit le fichier image en local via FileReader et place le résultat
+	// dans l'attribut `src` de l'élément <img> pour afficher l'aperçu.
 	function previewFile(file) {
 		if (!file.type.startsWith('image/')) {
+			// message utilisateur simple
 			alert('Veuillez sélectionner une image.');
 			return;
 		}
@@ -119,11 +93,9 @@ if (typeof window === 'undefined' || typeof document === 'undefined') {
 		reader.readAsDataURL(file);
 	}
 
-	// Mode front-only : masquer complètement le bouton "Envoyer au backend"
-	// (conserve le bouton de simulation pour tester l'interface)
-	uploadBtn.style.display = 'none';
-
-	// Simuler un résultat (utile si pas de backend en place)
+	// Gestionnaire du bouton "Simuler résultat" :
+	// génère un score aléatoire pour simuler l'issue d'une détection
+	// (utile pour tester l'UI sans backend). Affiche un spinner bref.
 	simulateBtn.addEventListener('click', () => {
 		if (!currentFile) {
 			alert('Sélectionnez d\'abord une image pour simuler.');
@@ -139,8 +111,4 @@ if (typeof window === 'undefined' || typeof document === 'undefined') {
 		}, 900);
 	});
 
-	// accessibility: clicking the drop area opens the file chooser.
-	// Note: the HTML uses a <label> wrapping the input, so the browser
-	// already opens the file dialog when the area is clicked. The explicit
-	// JS handler was removed to avoid triggering the dialog twice.
-}
+})();
