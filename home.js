@@ -139,6 +139,8 @@ if (typeof window === 'undefined' || typeof document === 'undefined') {
 		}, 900);
 	});
 
-	// accessibility: allow clicking the drop area to open file chooser
-	dropArea.addEventListener('click', () => fileInput.click());
+	// accessibility: clicking the drop area opens the file chooser.
+	// Note: the HTML uses a <label> wrapping the input, so the browser
+	// already opens the file dialog when the area is clicked. The explicit
+	// JS handler was removed to avoid triggering the dialog twice.
 }
