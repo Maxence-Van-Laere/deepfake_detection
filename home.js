@@ -13,13 +13,14 @@
 
 	const fileInput = $('file-input');
 	const dropArea = $('drop-area');
-	const preview = $('preview');
+	const previewImg = $('preview-img');
+	const previewVideo = $('preview-video');
 	const previewWrapper = $('preview-wrapper');
 	const simulateBtn = $('simulate-btn');
 	const resultEl = $('result');
 	const spinner = $('spinner');
 
-	if (!fileInput || !dropArea || !preview || !previewWrapper || !simulateBtn || !resultEl || !spinner) {
+	if (!fileInput || !dropArea || !previewWrapper || !simulateBtn || !resultEl || !spinner) {
 		// Si des éléments manquent, on logge et on arrête l'initialisation.
 		// Ceci évite des erreurs si le script est inclus ailleurs.
 		/* eslint-disable no-console */
@@ -28,6 +29,7 @@
 	}
 
 	let currentFile = null;
+	let currentObjectUrl = null; // pour les vidéos blob URLs
 
 	function showSpinner(show) {
 		spinner.classList.toggle('hidden', !show);
@@ -77,20 +79,49 @@
 
 	// Lit le fichier image en local via FileReader et place le résultat
 	// dans l'attribut `src` de l'élément <img> pour afficher l'aperçu.
+	function clearPreview() {
+		if (currentObjectUrl) {
+			URL.revokeObjectURL(currentObjectUrl);
+			currentObjectUrl = null;
+		}
+		if (previewImg) {
+			previewImg.src = '';
+			previewImg.classList.remove('visible');
+		}
+		if (previewVideo) {
+			previewVideo.removeAttribute('src');
+			previewVideo.classList.remove('visible');
+			previewVideo.load();
+		}
+		previewWrapper.classList.remove('has-image', 'has-video');
+	}
+
 	function previewFile(file) {
-		if (!file.type.startsWith('image/')) {
-			// message utilisateur simple
-			alert('Veuillez sélectionner une image.');
+		const isImage = file.type.startsWith('image/');
+		const isVideo = file.type.startsWith('video/');
+		if (!isImage && !isVideo) {
+			alert('Veuillez sélectionner une image ou une vidéo.');
 			return;
 		}
 		currentFile = file;
-		const reader = new FileReader();
-		reader.onload = () => {
-			preview.src = reader.result;
-			previewWrapper.classList.add('has-image');
-			resetResult();
-		};
-		reader.readAsDataURL(file);
+		clearPreview();
+		resetResult();
+		if (isImage) {
+			const reader = new FileReader();
+			reader.onload = () => {
+				previewImg.src = reader.result;
+				previewImg.classList.add('visible');
+				previewWrapper.classList.add('has-image');
+			};
+			reader.readAsDataURL(file);
+		} else if (isVideo) {
+			currentObjectUrl = URL.createObjectURL(file);
+			previewVideo.src = currentObjectUrl;
+			previewVideo.classList.add('visible');
+			previewWrapper.classList.add('has-video');
+			// charger le preview (optionnel: autoplay court)
+			previewVideo.load();
+		}
 	}
 
 	// Gestionnaire du bouton "Simuler résultat" :
@@ -98,16 +129,17 @@
 	// (utile pour tester l'UI sans backend). Affiche un spinner bref.
 	simulateBtn.addEventListener('click', () => {
 		if (!currentFile) {
-			alert('Sélectionnez d\'abord une image pour simuler.');
-			return;
-		}
+				alert('Sélectionnez d\'abord un fichier (image ou vidéo) pour simuler.');
+				return;
+			}
 		showSpinner(true);
 		setResult('Simulation en cours...');
 		setTimeout(() => {
 			showSpinner(false);
 			const mockScore = Math.random();
 			const isDeep = mockScore > 0.5;
-			setResult(isDeep ? 'Simulation: deepfake probable.' : 'Simulation: image probablement authentique.', isDeep, mockScore);
+			const kind = currentFile && currentFile.type && currentFile.type.startsWith('video/') ? 'vidéo' : 'image';
+			setResult(isDeep ? `Simulation: ${kind} deepfake probable.` : `Simulation: ${kind} probablement authentique.`, isDeep, mockScore);
 		}, 900);
 	});
 

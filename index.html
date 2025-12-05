@@ -12,12 +12,13 @@
 
       <div class="uploader">
         <label class="file-drop" id="drop-area">
-          <input type="file" id="file-input" accept="image/*" />
-          <div class="drop-text">Cliquez pour choisir une image ou glissez-la ici</div>
+          <input type="file" id="file-input" accept="image/*,video/*" />
+          <div class="drop-text">Cliquez pour choisir une image ou une vidéo, ou glissez-la ici</div>
         </label>
 
         <div class="preview" id="preview-wrapper" aria-live="polite">
-          <img id="preview" alt="Aperçu de l'image" />
+          <img id="preview-img" alt="Aperçu de l'image" />
+          <video id="preview-video" controls muted playsinline></video>
         </div>
 
         <div class="controls">
@@ -29,7 +30,7 @@
       </div>
 
       <footer class="note">
-        Backend attendu: POST <code>/api/detect</code> (FormData avec clé <code>image</code>). Réponse JSON attendue: <code>{ "is_deepfake": true|false, "score": 0.87 }</code>.
+        Backend attendu: POST <code>/api/detect</code> (FormData avec clé <code>file</code> — image ou vidéo). Réponse JSON attendue: <code>{ "is_deepfake": true|false, "score": 0.87 }</code>.
       </footer>
     </main>
 

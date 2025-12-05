@@ -56,14 +56,24 @@ h1{
   align-items:center;
   justify-content:center;
 }
-.preview img{
+.preview img,
+.preview video{
   max-width:100%;
   max-height:320px;
   border-radius:6px;
-  display:none
+  display:none;
+}
+
+.preview img.visible,
+.preview video.visible{
+  display:block;
 }
 
 .preview.has-image img{
+  display:block
+}
+
+.preview.has-video video{
   display:block
 }
 
